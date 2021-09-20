@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import BestAsk from "./components/BestAsk";
 import BestBid from "./components/BestBid";
+import BidChart from "./components/BidChart";
+
 
 import './App.css';
 
@@ -8,10 +10,12 @@ import './App.css';
 
 function App() {
   const [currencyPair, setCurrencyPair] = useState('');
-  const [curAsks, setCurAsks] = useState([]);
-  const [curBids, setCurBids] = useState([]);
   const [curAsk, setCurAsk] = useState('');
   const [curBid, setCurBid] = useState('');
+  const [askData, setAskData] = useState([]);
+  const [bidData, setBidData] = useState([]);
+  const [timeData, setTimeData] = useState([]);
+
 
   useEffect(() => {
     const ws = new WebSocket("wss://ws-feed.pro.coinbase.com");
@@ -32,28 +36,40 @@ function App() {
       );
     };
 
-    let counter = 0;
+    //set flags
+    let nextFlag = true;
+    let bidFlag = false;
+    let askFlag = false;
     ws.onmessage = msg => {
-      counter++;
       let data = JSON.parse(msg.data)
       if(data.type === 'snapshot') {
-        console.log('asks:', data.asks[0])
-        console.log('bids:', data.bids[0])
         setCurAsk(data.asks[0]);
         setCurBid(data.bids[0]);
-      } else if (data.type === 'l2update' && counter % 1000 === 0) {
-        console.log('counter', counter )
+      } else if (data.type === 'l2update') {
+        // begin calculate second
+        let time = data.time.substr(data.time.indexOf('.') + 1, 1);
+        if(nextFlag && Number(time) === 0) { bidFlag = true; askFlag = true; nextFlag = false; }
+        if(Number(time) === 1) { nextFlag = true }
+        //end calculate second
         let tuple = [];
         tuple.push(data.changes[0][1]);
         tuple.push(data.changes[0][2]);
-        if(data.changes[0][0] === 'buy') {
+        if(bidFlag && data.changes[0][0] === 'buy') {
           setCurBid(tuple);
-        } else if (data.changes[0][0] === 'sell') {
+          console.log('buy', time, tuple)
+          let temp = bidData;
+          temp.push(data.changes[0][1]);
+          setBidData(temp)
+          bidFlag = false;
+        } else if (askFlag && data.changes[0][0] === 'sell') {
+          console.log('sell', time, tuple)
           setCurAsk(tuple);
+          let temp = askData;
+          temp.push(data.changes[0][1]);
+          setAskData(temp);
+          askFlag = false;
         }
-          
       } 
-     
     };
     ws.onclose = () => {
       console.log('disconnected')
@@ -84,6 +100,7 @@ function App() {
           <BestBid curBid={curBid} />
           <BestAsk curAsk={curAsk} />
         </div>
+        <BidChart askData={askData} bidData={bidData}  />
       </div>
     </div>
   );
