@@ -53,6 +53,15 @@
   justify-content: left;
   align-items: center;
 }
+
+.ask-title-box {
+  background-color: #ffb94e;
+  color: #fff;
+  height: 40px;
+  display: flex;
+  justify-content: left;
+  align-items: center;
+}
 .bid-title {
   margin-left: 10px;
   font-weight: bold;
@@ -105,4 +114,14 @@
   margin-right: 20px;
   margin-top: 3px;
   font-size: x-small;
+}
+
+.bid-ask-cont {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bid-ask-cont > div {
+  margin: 10px;
 }

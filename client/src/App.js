@@ -32,12 +32,13 @@ function App() {
     ws.onmessage = msg => {
       let data = JSON.parse(msg.data)
       if(data.type === 'snapshot') {
-        console.log(data)
-        // console.log('asks:', data.asks[0])
-        // console.log('bids:', data.bids[0])
+    
+        console.log('asks:', data.asks[0])
+        console.log('bids:', data.bids[0])
         setCurAsk(data.asks[0]);
         setCurBid(data.bids[0]);
-      } else {
+      } else if (data.type === 'l2update') {
+        console.log(data.type.changes[0], data.type.changes[1], data.type.changes[2])
 
       } 
      
@@ -63,10 +64,12 @@ function App() {
           <option value="BCH-USD">BCH-USD</option>
         </select>
       </div>
+
       <div className="chart-cont">
-      <BestBid curBid={curBid} />
-        <BestAsk />
-       
+        <div className="bid-ask-cont">
+          <BestBid curBid={curBid} />
+          <BestAsk curAsk={curAsk} />
+        </div>
       </div>
     </div>
   );
