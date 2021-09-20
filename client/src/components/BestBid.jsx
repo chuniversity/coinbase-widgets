@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from "react";
 
-function BestBid({curBid}) {
+function BestBid({ curBid }) {
+
   return (
     <div className="bid-box">
       <div className="bid-title-box">

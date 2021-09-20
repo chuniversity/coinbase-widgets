@@ -8,6 +8,8 @@ import './App.css';
 
 function App() {
   const [currencyPair, setCurrencyPair] = useState('');
+  const [curAsks, setCurAsks] = useState([]);
+  const [curBids, setCurBids] = useState([]);
   const [curAsk, setCurAsk] = useState('');
   const [curBid, setCurBid] = useState('');
 
@@ -29,26 +31,38 @@ function App() {
       })
       );
     };
+
+    let counter = 0;
     ws.onmessage = msg => {
+      counter++;
       let data = JSON.parse(msg.data)
       if(data.type === 'snapshot') {
-    
         console.log('asks:', data.asks[0])
         console.log('bids:', data.bids[0])
         setCurAsk(data.asks[0]);
         setCurBid(data.bids[0]);
-      } else if (data.type === 'l2update') {
-        console.log(data.type.changes[0], data.type.changes[1], data.type.changes[2])
-
+      } else if (data.type === 'l2update' && counter % 1000 === 0) {
+        console.log('counter', counter )
+        let tuple = [];
+        tuple.push(data.changes[0][1]);
+        tuple.push(data.changes[0][2]);
+        if(data.changes[0][0] === 'buy') {
+          setCurBid(tuple);
+        } else if (data.changes[0][0] === 'sell') {
+          setCurAsk(tuple);
+        }
+          
       } 
      
     };
+    ws.onclose = () => {
+      console.log('disconnected')
+      }
   }, []);
 
   function handleSelect (cur) {
     setCurrencyPair(cur);
   }
-
 
   return (
     <div className="App">

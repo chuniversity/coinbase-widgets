@@ -1,6 +1,6 @@
 import React from 'react';
 
-function BestAsk({curAsk}) {
+function BestAsk({ curAsk }) {
   return (
     <div className="bid-box">
       <div className="ask-title-box">
