@@ -12,10 +12,8 @@ function App() {
   const [currencyPair, setCurrencyPair] = useState('');
   const [curAsk, setCurAsk] = useState('');
   const [curBid, setCurBid] = useState('');
-  const [askData, setAskData] = useState([]);
-  const [bidData, setBidData] = useState([]);
-  const [timeData, setTimeData] = useState([]);
-
+  const [isChartFull, setIsChartFull] = useState(false);
+  const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
     const ws = new WebSocket("wss://ws-feed.pro.coinbase.com");
@@ -35,11 +33,12 @@ function App() {
       })
       );
     };
-
     //set flags
     let nextFlag = true;
     let bidFlag = false;
     let askFlag = false;
+    let chartBidFlag = false;
+    let chartDataHold = [];
     ws.onmessage = msg => {
       let data = JSON.parse(msg.data)
       if(data.type === 'snapshot') {
@@ -47,27 +46,38 @@ function App() {
         setCurBid(data.bids[0]);
       } else if (data.type === 'l2update') {
         // begin calculate second
-        let time = data.time.substr(data.time.indexOf('.') + 1, 1);
-        if(nextFlag && Number(time) === 0) { bidFlag = true; askFlag = true; nextFlag = false; }
-        if(Number(time) === 1) { nextFlag = true }
-        //end calculate second
-        let tuple = [];
-        tuple.push(data.changes[0][1]);
-        tuple.push(data.changes[0][2]);
+        let second = data.time.substr(data.time.indexOf('.') + 1, 1);
+        if(nextFlag && Number(second) === 0) { bidFlag = true; askFlag = true; nextFlag = false; }
+        if(Number(second) === 1) { nextFlag = true }
+        let time = new Date(data.time)
+        let newTime = time.getHours() + ':' + time.getMinutes() + ':' + time.getSeconds();
         if(bidFlag && data.changes[0][0] === 'buy') {
+          let tuple = [];
+          tuple.push(data.changes[0][1]);
+          tuple.push(data.changes[0][2]);
           setCurBid(tuple);
-          console.log('buy', time, tuple)
-          let temp = bidData;
-          temp.push(data.changes[0][1]);
-          setBidData(temp)
+          chartDataHold.push(newTime);
+          chartDataHold.push(data.changes[0][1])
           bidFlag = false;
-        } else if (askFlag && data.changes[0][0] === 'sell') {
-          console.log('sell', time, tuple)
+          chartBidFlag = true;
+        } else if (chartBidFlag && askFlag && data.changes[0][0] === 'sell') {
+          let tuple = [];
+          tuple.push(data.changes[0][1]);
+          tuple.push(data.changes[0][2]);
           setCurAsk(tuple);
-          let temp = askData;
-          temp.push(data.changes[0][1]);
-          setAskData(temp);
+          chartDataHold.push(data.changes[0][1]);
           askFlag = false;
+        }
+        if(chartDataHold.length === 3) {
+          let chartDataTemp = chartData;
+          chartDataTemp.push(chartDataHold);
+          setChartData(chartDataTemp);
+          chartDataHold = [];
+          chartBidFlag = false;
+          if(chartData.length >= 60) {
+            setIsChartFull(true);
+            chartData.shift();
+          }
         }
       } 
     };
@@ -79,11 +89,12 @@ function App() {
   function handleSelect (cur) {
     setCurrencyPair(cur);
   }
+  
 
   return (
     <div className="App">
       <header className="header">
-        Select a Currency Pair
+        <h1>Select a Currency Pair</h1>
       </header>
       <div className="form-container">
         <select onChange={e => handleSelect(e.target.value)}>
@@ -96,11 +107,13 @@ function App() {
       </div>
 
       <div className="chart-cont">
+        <div className="chart-title">Real Time Chart</div>
+
         <div className="bid-ask-cont">
           <BestBid curBid={curBid} />
           <BestAsk curAsk={curAsk} />
         </div>
-        <BidChart askData={askData} bidData={bidData}  />
+        <BidChart chartData={chartData} isChartFull={isChartFull} />
       </div>
     </div>
   );
