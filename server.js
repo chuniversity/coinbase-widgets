@@ -5,7 +5,7 @@ const startMongo = require("./server/mongoConnect");
 const router = require('./server/routes');
 const ChartData = require('./server/models/ChartData');
 
-const PORT = process.env.PORT || 4005;
+const PORT = process.env.PORT || 4007;
 const app = express();
 
 app.use(express.json());
@@ -14,7 +14,7 @@ app.use(router);
 
 const startServer = async () => {
   await startMongo()
-  app.listen(4005, () => {
+  app.listen(4007, () => {
     console.log(`listening on port 4002`)
   });
 }
@@ -62,14 +62,26 @@ ws.onmessage = msg => {
     });
   } else if (data.type === 'l2update') {
     if(Number(data.changes[0][2]) === 0) {
-      //if item matches this criteria (that is quantity === 0) we want to remove this item from the database. 
-
-      // this code is trying to find the item, but can't match the inner array, it's trying to match the whole tuple
-      ChartData.updateOne( { _id: "614ab8790fc35dfd9118fa56" }, { $pull: { bid: { $in: data.changes[0][1] } } } )
-  
-  
+      if(data.changes[0][0] === 'buy') {
+        ChartData.updateOne( { _id: collId }, { $pull: { bid: { $elemMatch: { $eq: data.changes[0][1] } } } }, function (err, res) {
+          if (err) throw err;
+          });
+      } else if (data.changes[0][0] === 'sell') {
+        ChartData.updateOne( { _id: collId }, { $pull: { sell: { $elemMatch: { $eq: data.changes[0][1] } } } }, function (err, res) {
+          if (err) throw err;
+          });
+      }
     } else {
-      let tuple = [data.changes[0][1], data.changes[0][2]]
+      let tuple = [data.changes[0][1], data.changes[0][2]];
+      if(data.changes[0][0] === 'buy') {
+
+
+        // if the item ([data.changes[0][1]) is present in the bids array, update the quantity (data.changes[0][2]])
+          // if the item is not pretty in the bids array, add the item and quanity (the tuple) to the array. 
+
+      } else if (data.changes[0][0] === 'sell') {
+
+      }
 
     }
 
