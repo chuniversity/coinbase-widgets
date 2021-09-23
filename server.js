@@ -5,7 +5,7 @@ const startMongo = require("./server/mongoConnect");
 const router = require('./server/routes');
 const ChartData = require('./server/models/ChartData');
 
-const PORT = process.env.PORT || 4007;
+const PORT = process.env.PORT || 4008;
 const app = express();
 
 app.use(express.json());
@@ -14,8 +14,8 @@ app.use(router);
 
 const startServer = async () => {
   await startMongo()
-  app.listen(4007, () => {
-    console.log(`listening on port 4002`)
+  app.listen(4008, () => {
+    console.log(`listening on port 4008`)
   });
 }
 
@@ -72,15 +72,24 @@ ws.onmessage = msg => {
           });
       }
     } else {
-      let tuple = [data.changes[0][1], data.changes[0][2]];
+      let tuple = [[data.changes[0][1], data.changes[0][2]]];
       if(data.changes[0][0] === 'buy') {
-
-
-        // if the item ([data.changes[0][1]) is present in the bids array, update the quantity (data.changes[0][2]])
-          // if the item is not pretty in the bids array, add the item and quanity (the tuple) to the array. 
-
+        ChartData.find( {bid: { $elemMatch: { $elemMatch: {$eq: data.changes[0][1]} } } })
+          .then(doc => {
+          if (doc.length) { // if item is present, remove this old item
+        ChartData.updateOne( { _id: collId }, { $pull: { bid: { $elemMatch: { $eq: data.changes[0][1] } } } }).catch(err => {console.error(err)});
+          } // push new item
+        ChartData.updateOne( { _id: collId }, {$push : { bid: tuple }} ).catch(err => {console.error(err)});
+          });
       } else if (data.changes[0][0] === 'sell') {
-
+        ChartData.find( {ask: { $elemMatch: { $elemMatch: {$eq: data.changes[0][1]} } } })
+        .then(doc => {
+        if (doc.length) { // if item is present, remove this old item and push new one
+          ChartData.updateOne( { _id: collId }, { $pull: { ask: { $elemMatch: { $eq: data.changes[0][1] } } } }).catch(err => {console.error(err)});
+        } // push new item
+          ChartData.updateOne( { _id: collId }, {$push : { ask: tuple }} ).catch(err => {console.error(err)});
+        
+        });
       }
 
     }

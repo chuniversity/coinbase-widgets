@@ -4,8 +4,12 @@ const { Router } = require('express')
 
 const router = Router();
 
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Review API' });
+router.get('/', function(req, res) {
+  res.json("welcome");
+});
+
+router.get('/connect', function(req, res) {
+  console.log(req)
 });
 
 
