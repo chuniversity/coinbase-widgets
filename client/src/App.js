@@ -2,11 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import BestAsk from "./components/BestAsk";
 import BestBid from "./components/BestBid";
 import BidChart from "./components/BidChart";
-
+import Ladder from "./components/Ladder";
 
 import './App.css';
-
-
 
 function App() {
   const [currencyPair, setCurrencyPair] = useState('');
@@ -14,8 +12,12 @@ function App() {
   const [curBid, setCurBid] = useState('');
   const [isChartFull, setIsChartFull] = useState(false);
   const [chartData, setChartData] = useState([]);
+  const [asks, setAsks] = useState([]);
+  const [bids, setBids] = useState([]);
+  const [bidsUpdates, setBidsUpdates] = useState([]);
 
   useEffect(() => {
+    
     const ws = new WebSocket("wss://ws-feed.pro.coinbase.com");
     ws.onopen = () => {
       ws.send(
@@ -34,50 +36,26 @@ function App() {
       );
     };
     //set flags
-    let nextFlag = true;
-    let bidFlag = false;
-    let askFlag = false;
-    let chartBidFlag = false;
-    let chartDataHold = [];
+
     ws.onmessage = msg => {
       let data = JSON.parse(msg.data)
       if(data.type === 'snapshot') {
-        setCurAsk(data.asks[0]);
         setCurBid(data.bids[0]);
+        setCurAsk(data.asks[0]);
+        console.log('first test', curBid)
+        setAsks(data.asks);
+        setBids(data.bids);
       } else if (data.type === 'l2update') {
-        // begin calculate second
-        let second = data.time.substr(data.time.indexOf('.') + 1, 1);
-        if(nextFlag && Number(second) === 0) { bidFlag = true; askFlag = true; nextFlag = false; }
-        if(Number(second) === 1) { nextFlag = true }
-        let time = new Date(data.time)
-        let newTime = time.getHours() + ':' + time.getMinutes() + ':' + time.getSeconds();
-        if(bidFlag && data.changes[0][0] === 'buy') {
-          let tuple = [];
-          tuple.push(data.changes[0][1]);
-          tuple.push(data.changes[0][2]);
-          setCurBid(tuple);
-          chartDataHold.push(newTime);
-          chartDataHold.push(data.changes[0][1])
-          bidFlag = false;
-          chartBidFlag = true;
-        } else if (chartBidFlag && askFlag && data.changes[0][0] === 'sell') {
-          let tuple = [];
-          tuple.push(data.changes[0][1]);
-          tuple.push(data.changes[0][2]);
-          setCurAsk(tuple);
-          chartDataHold.push(data.changes[0][1]);
-          askFlag = false;
-        }
-        if(chartDataHold.length === 3) {
-          let chartDataTemp = chartData;
-          chartDataTemp.push(chartDataHold);
-          setChartData(chartDataTemp);
-          chartDataHold = [];
-          chartBidFlag = false;
-          if(chartData.length >= 60) {
-            setIsChartFull(true);
-            chartData.shift();
-          }
+        if(data.changes[0][0] === 'buy') {
+         if(Number(data.changes[0][2]) === 0) {
+          handleRemoveItem(data.changes[1])
+         } else {
+          let newValue = [data.changes[0][1], data.changes[0][2]]
+          setBids(prevArray => [...prevArray, newValue])
+          // if(data.changes[0][1] > curBid) { setCurBid(newValue)}
+         }
+        } else if (data.changes[0][0] === 'sell') {
+
         }
       } 
     };
@@ -86,8 +64,23 @@ function App() {
       }
   }, []);
 
+  function handleRemoveItem (val) {
+    setBids(bids.filter(item => item[0] !== val))
+  }
+
+
+
   function handleSelect (cur) {
     setCurrencyPair(cur);
+  }
+  function feedDataHandler () {
+    console.log(bids)
+  }
+  function firstBidHandler () {
+    console.log(bids[0])
+  }
+  function curBidHandler () {
+    console.log(curBid)
   }
   
 
@@ -113,8 +106,12 @@ function App() {
           <BestBid curBid={curBid} />
           <BestAsk curAsk={curAsk} />
         </div>
-        <BidChart chartData={chartData} isChartFull={isChartFull} />
+        {/* <BidChart chartData={chartData} isChartFull={isChartFull} /> */}
+        <button onClick={feedDataHandler}>Feed Data</button>
+        <button onClick={firstBidHandler}>First Bid</button>
+        <button onClick={curBidHandler}>curBid</button>
       </div>
+      <Ladder />
     </div>
   );
 }

@@ -1,0 +1,27 @@
+{
+  "name": "coinbase-widgets",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chuniversity/coinbase-widgets.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/chuniversity/coinbase-widgets/issues"
+  },
+  "homepage": "https://github.com/chuniversity/coinbase-widgets#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^6.0.7",
+    "nodemon": "^2.0.12",
+    "ws": "^8.2.2"
+  }
+}
