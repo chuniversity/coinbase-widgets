@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import axios from 'axios';
 import BestAsk from "./components/BestAsk";
 import BestBid from "./components/BestBid";
 import BidChart from "./components/BidChart";
@@ -10,24 +11,42 @@ function App() {
   const [currencyPair, setCurrencyPair] = useState('');
   const [curAsk, setCurAsk] = useState('');
   const [curBid, setCurBid] = useState('');
+  const [curAskData, setCurAskData] = useState([[0,0]]);
+  const [curBidData, setCurBidData] = useState([[0,0]]);
+  const curBidDataRef = useRef(curBidData)
+
+
+
+  const [curBidHist, setCurBidHist] = useState('');
+  const [curAskHist, setCurAskHist] = useState('');
   const [isChartFull, setIsChartFull] = useState(false);
   const [chartData, setChartData] = useState([]);
   const [asks, setAsks] = useState([]);
   const [bids, setBids] = useState([]);
   const [bidsUpdates, setBidsUpdates] = useState([]);
+  const [dataRec, setDataRec] = useState(false);
+  const dataRecRef = useRef(dataRec)
 
-  useEffect(() => {
-    
+  
+  useEffect(
+    () => { dataRecRef.current = dataRec },
+    [dataRec]
+  )
+
+  useEffect(
+    () => { curBidDataRef.current = curBidData },
+    [curBidData]
+  )
+  
+
+  function handleSelect (e) {
     const ws = new WebSocket("wss://ws-feed.pro.coinbase.com");
     ws.onopen = () => {
       ws.send(
         JSON.stringify({
           "type": "subscribe",
           "product_ids": [
-              "BTC-USD"
-              // "ETH-USD",
-              // "LTC-USD",
-              // "BCH-USD"
+            e
           ],
           "channels": [
               "level2"
@@ -35,54 +54,120 @@ function App() {
       })
       );
     };
-    //set flags
 
     ws.onmessage = msg => {
-      let data = JSON.parse(msg.data)
-      if(data.type === 'snapshot') {
-        setCurBid(data.bids[0]);
-        setCurAsk(data.asks[0]);
-        console.log('first test', curBid)
-        setAsks(data.asks);
-        setBids(data.bids);
-      } else if (data.type === 'l2update') {
-        if(data.changes[0][0] === 'buy') {
-         if(Number(data.changes[0][2]) === 0) {
-          handleRemoveItem(data.changes[1])
-         } else {
-          let newValue = [data.changes[0][1], data.changes[0][2]]
-          setBids(prevArray => [...prevArray, newValue])
-          // if(data.changes[0][1] > curBid) { setCurBid(newValue)}
-         }
-        } else if (data.changes[0][0] === 'sell') {
-
-        }
-      } 
-    };
-    ws.onclose = () => {
-      console.log('disconnected')
+    let data = JSON.parse(msg.data)
+    if(data.type === 'snapshot') {
+      let bidTemp = [];
+      let askTemp = [];
+      for(let i = 1; i < 50; i++){
+        bidTemp.push(data.bids[i]);
+        askTemp.push(data.asks[i]);
       }
-  }, []);
+      setCurBidData(data.bids);
+      setCurAskData(askTemp);
+    } else if (data.type === 'l2update') {
+      if(Number(data.changes[0][2]) === 0) {
+        if(data.changes[0][0] === 'buy') {
+          let newbidvalues = [...curBidDataRef.current];
+          for (let i = 0; i < newbidvalues.length; i++) {
+            if(data.changes[0][1] === newbidvalues[i][0]) {
+              newbidvalues.splice(i,1);
+              break;
+            }
+          }
+          setCurBidData(newbidvalues);
 
-  function handleRemoveItem (val) {
-    setBids(bids.filter(item => item[0] !== val))
+
+        } else if (data.changes[0][0] === 'sell') {
+          let newaskvalues = [...curAskData];
+          // for (let i = 0; i < newaskvalues.length; i++) {
+          //   if(data.changes[0][1] === newaskvalues[i][0]) {
+          //     newaskvalues.splice(i,1);
+          //     break;
+          //   }
+          // }
+        }
+    } else {
+      if (data.changes[0][0] === 'buy') {
+        let tuple = [data.changes[0][1], data.changes[0][2]];
+        let newbidvalues = [...curBidDataRef.current];
+        if(data.changes[0][1] > newbidvalues[0][0]){
+          newbidvalues.unshift(tuple)
+        } else {
+          if(newbidvalues[0][0] !== undefined) {
+            for (let i = 0; i < newbidvalues.length; i++) {
+              if(data.changes[0][1] > newbidvalues[i][0] && data.changes[0][1] < newbidvalues[i + 1][0]){
+                newbidvalues.splice(i+1,0,tuple);
+                break;
+              }
+            }
+          }
+        }
+        setCurBidData(newbidvalues)
+      } else if (data.changes[0][0] === 'sell')  {
+        // let tuple = [data.changes[0][1], data.changes[0][2]];
+        // let newaskvalues = [...curAskData];
+        // if(data.changes[0][1] > newaskvalues[0][0]){
+        //   newaskvalues.unshift(tuple)
+        // } else {
+        //   let placed = false;
+        //   for (let i = 0; i < newaskvalues.length; i++) {
+        //     if(data.changes[0][1] > newaskvalues[i] && data.changes[0][1] < newaskvalues[i + 1]){
+        //       placed = true;
+        //       newaskvalues.splice(i+1,0,tuple);
+        //       break;
+        //     }
+        //   }
+        //   if (!placed) {
+        //     newaskvalues.push(tuple);
+        //   }
+        // }
+        // setCurAskData(newaskvalues);     
+      }
+    }
+  }
+}
+  //end onmessage
+    
+    setCurrencyPair(e)
+    // let obj = {};
+    // obj.currency = e;
+    // axios.post('/connect', obj)
+    // .then(data => {
+    //   console.log('data sent')
+    //   setDataRec(true)
+    // })
+    // .catch(err => {
+    //   console.log(err)
+    // });
+  }
+
+  function getHighest () {
+    // if(dataRecRef.current === true) {
+    //   axios.get('/gethighest')
+    //   .then(data => {
+    //     console.log('success')
+    //   })
+    //   .catch(err => {
+    //     console.log(err)
+    //   });
+    // }
   }
 
 
+ 
+//   useEffect(() => {
+//     getHighest()
+//     setInterval(() => getHighest(), 1000)
+    
+// }, [])
 
-  function handleSelect (cur) {
-    setCurrencyPair(cur);
-  }
-  function feedDataHandler () {
-    console.log(bids)
-  }
-  function firstBidHandler () {
-    console.log(bids[0])
-  }
-  function curBidHandler () {
-    console.log(curBid)
-  }
-  
+//testing functions
+
+function getCurBidData () {
+  console.log('button: curBidData', curBidData)
+}
 
   return (
     <div className="App">
@@ -103,13 +188,12 @@ function App() {
         <div className="chart-title">Real Time Chart</div>
 
         <div className="bid-ask-cont">
-          <BestBid curBid={curBid} />
-          <BestAsk curAsk={curAsk} />
+          <BestBid curBid={curBidData[0]} />
+          <BestAsk curAsk={curAskData[0]} />
         </div>
         {/* <BidChart chartData={chartData} isChartFull={isChartFull} /> */}
-        <button onClick={feedDataHandler}>Feed Data</button>
-        <button onClick={firstBidHandler}>First Bid</button>
-        <button onClick={curBidHandler}>curBid</button>
+        <button onClick={getHighest}>Get Highest</button>
+        <button onClick={getCurBidData}>Get curBidData</button>
       </div>
       <Ladder />
     </div>
